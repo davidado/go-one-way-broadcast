@@ -26,11 +26,11 @@ This application is deployable to multiple servers behind a load balancer. Messa
 
 1. Execute `make run` in the root path (same directory as the Makefile).
 
-2. Go to http://localhost:8080/<topic> where <topic> can be anything you choose.
+2. Go to http://localhost:8080/[topic] where [topic] can be anything you choose.
 
-3. Go to http://localhost:8080/push/<topic> to push data into the message broker which is then displayed into the page you entered above.
+3. Go to http://localhost:8080/push/[topic] to push data into the message broker which is then displayed into the page you entered above.
 
-4. Listen to http://localhost:8080/events/<topic> in your own application for data updates (refer to `/public/index.html`).
+4. Listen to http://localhost:8080/events/[topic] in your own application for data updates (refer to `/public/index.html`).
 
 ## Protobuf
 
