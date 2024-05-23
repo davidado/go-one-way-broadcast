@@ -1,0 +1,10 @@
+syntax = "proto3";
+package pb;
+
+option go_package = "github.com/davidado/go-one-way-broadcast/pb";
+
+message Message {
+    string topic = 1;
+    string title = 2;
+    string body = 3;
+}

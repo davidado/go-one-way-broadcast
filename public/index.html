@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<title>Server Sent Events Example</title>
+</head>
+<body>
+<h1>Server Sent Events Example</h1>
+
+<div id="events"></div>
+
+<script>
+    const lastPart = document.location.pathname.split('/').pop();
+    var events = new EventSource('/events/' + lastPart);
+    
+    events.onmessage = function(event) {
+        var element = document.createElement("div");
+        element.textContent = event.data;
+        document.getElementById("events").appendChild(element);
+    }
+</script>
+</body>
+</html>
