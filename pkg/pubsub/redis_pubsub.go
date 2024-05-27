@@ -6,9 +6,7 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/davidado/go-one-way-broadcast/pb"
 	"github.com/redis/go-redis/v9"
-	"google.golang.org/protobuf/proto"
 )
 
 // RedisPubSub is a Redis client for publishing and subscribing messages.
@@ -24,13 +22,8 @@ func NewRedisPubSub(conn *redis.Client) *RedisPubSub {
 }
 
 // Publish publishes a message to a topic.
-func (ps *RedisPubSub) Publish(ctx context.Context, topic string, m *pb.Message) error {
-	b, err := proto.Marshal(m)
-	if err != nil {
-		log.Println("error marshalling message:", err)
-		return err
-	}
-	err = ps.conn.Publish(ctx, topic, b).Err()
+func (ps *RedisPubSub) Publish(ctx context.Context, topic string, b []byte) error {
+	err := ps.conn.Publish(ctx, topic, b).Err()
 	if err != nil {
 		return err
 	}
@@ -39,7 +32,7 @@ func (ps *RedisPubSub) Publish(ctx context.Context, topic string, m *pb.Message)
 
 // Subscribe listens to a topic for incoming messages
 // then adds them to the eventStream channel.
-func (ps *RedisPubSub) Subscribe(ctx context.Context, topic string, eventStream chan *pb.Message) {
+func (ps *RedisPubSub) Subscribe(ctx context.Context, topic string, eventStream chan []byte) {
 	subscriber := ps.conn.Subscribe(ctx, topic)
 
 	defer func() {
@@ -57,14 +50,7 @@ func (ps *RedisPubSub) Subscribe(ctx context.Context, topic string, eventStream 
 		case <-ctx.Done():
 			return
 		case b := <-subscriber.Channel():
-			msg := &pb.Message{}
-			err := proto.Unmarshal([]byte(b.Payload), msg)
-			if err != nil {
-				log.Println("error unmarshalling message:", err)
-				continue
-			}
-
-			eventStream <- msg
+			eventStream <- []byte(b.Payload)
 		}
 	}
 }

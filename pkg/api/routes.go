@@ -12,13 +12,14 @@ import (
 	"time"
 
 	"github.com/davidado/go-one-way-broadcast/pb"
+	"google.golang.org/protobuf/proto"
 )
 
 // PubSubber is an interface for subscribing to a topic and
 // publishing messages to it.
 type PubSubber interface {
-	Publish(ctx context.Context, topic string, m *pb.Message) error
-	Subscribe(ctx context.Context, topic string, eventStream chan *pb.Message)
+	Publish(ctx context.Context, topic string, b []byte) error
+	Subscribe(ctx context.Context, topic string, eventStream chan []byte)
 }
 
 // HandleTopic serves the index.html file.
@@ -30,7 +31,7 @@ func HandleTopic(w http.ResponseWriter, r *http.Request) {
 // HandleEvents handles server sent events (SSE) for a topic.
 func HandleEvents(pubsub PubSubber) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		eventStream := make(chan *pb.Message)
+		eventStream := make(chan []byte)
 		defer close(eventStream)
 
 		topic := r.PathValue("topic")
@@ -40,7 +41,7 @@ func HandleEvents(pubsub PubSubber) http.HandlerFunc {
 	}
 }
 
-func sendServerEvents(w http.ResponseWriter, r *http.Request, eventStream chan *pb.Message) {
+func sendServerEvents(w http.ResponseWriter, r *http.Request, eventStream chan []byte) {
 	flusher, ok := w.(http.Flusher)
 	if !ok {
 		http.Error(w, "SSE not supported", http.StatusInternalServerError)
@@ -56,16 +57,22 @@ func sendServerEvents(w http.ResponseWriter, r *http.Request, eventStream chan *
 		select {
 		case <-r.Context().Done():
 			return
-		case m := <-eventStream:
+		case b := <-eventStream:
+			msg := &pb.Message{}
+			err := proto.Unmarshal(b, msg)
+			if err != nil {
+				log.Println("error unmarshalling message:", err)
+				continue
+			}
 			// Flush the message to the client.
 			j, err := json.Marshal(struct {
 				Topic string `json:"topic"`
 				Title string `json:"title"`
 				Body  string `json:"body"`
 			}{
-				Topic: m.Topic,
-				Title: m.Title,
-				Body:  m.Body,
+				Topic: msg.Topic,
+				Title: msg.Title,
+				Body:  msg.Body,
 			})
 			if err != nil {
 				log.Println("error marshalling message:", err)
@@ -82,14 +89,19 @@ func HandlePush(pubsub PubSubber) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		topic := r.PathValue("topic")
 		for i := 0; i < 10; i++ {
-			m := &pb.Message{
+			msg := &pb.Message{
 				Topic: topic,
 				Title: "New Message!",
 				Body:  strconv.Itoa(i),
 			}
-			pubsub.Publish(r.Context(), topic, m)
+			b, err := proto.Marshal(msg)
+			if err != nil {
+				log.Println("error marshalling message:", err)
+				return
+			}
+			pubsub.Publish(r.Context(), topic, b)
 			time.Sleep(1 * time.Second)
-			fmt.Println(" [*] Published message to topic:", string(m.Body))
+			fmt.Println(" [*] Published message to topic:", string(msg.Body))
 		}
 	}
 }

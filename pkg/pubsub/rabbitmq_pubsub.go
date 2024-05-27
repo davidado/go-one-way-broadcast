@@ -6,9 +6,7 @@ import (
 	"log"
 	"time"
 
-	"github.com/davidado/go-one-way-broadcast/pb"
 	amqp "github.com/rabbitmq/amqp091-go"
-	"google.golang.org/protobuf/proto"
 )
 
 // RabbitMQPubSub is a Redis client for publishing and subscribing messages.
@@ -40,13 +38,7 @@ func configureExchange(ch *amqp.Channel, topic string) error {
 }
 
 // Publish publishes a message to a topic.
-func (ps *RabbitMQPubSub) Publish(ctx context.Context, topic string, m *pb.Message) error {
-	b, err := proto.Marshal(m)
-	if err != nil {
-		log.Println("error marshalling message:", err)
-		return err
-	}
-
+func (ps *RabbitMQPubSub) Publish(ctx context.Context, topic string, b []byte) error {
 	ch, err := ps.conn.Channel()
 	if err != nil {
 		log.Println("error creating channel:", err)
@@ -80,7 +72,7 @@ func (ps *RabbitMQPubSub) Publish(ctx context.Context, topic string, m *pb.Messa
 
 // Subscribe listens to a topic for incoming messages
 // then adds them to the eventStream channel.
-func (ps *RabbitMQPubSub) Subscribe(ctx context.Context, topic string, eventStream chan *pb.Message) {
+func (ps *RabbitMQPubSub) Subscribe(ctx context.Context, topic string, eventStream chan []byte) {
 	ch, err := ps.conn.Channel()
 	if err != nil {
 		log.Println("error creating channel:", err)
@@ -144,14 +136,7 @@ func (ps *RabbitMQPubSub) Subscribe(ctx context.Context, topic string, eventStre
 		case <-ctx.Done():
 			return
 		case d := <-msgs:
-			msg := &pb.Message{}
-			err := proto.Unmarshal(d.Body, msg)
-			if err != nil {
-				log.Println("error unmarshalling message:", err)
-				continue
-			}
-
-			eventStream <- msg
+			eventStream <- d.Body
 		}
 	}
 }

@@ -1,4 +1,4 @@
-MAIN_PACKAGE_PATH := ./cmd/rabbitmq
+MAIN_PACKAGE_PATH := ./cmd/redis
 BINARY_NAME := broadcast
 
 build:
